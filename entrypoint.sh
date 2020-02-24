@@ -9,12 +9,26 @@ function hello () {
   echo "[DoChat] 盒装微信 v$VERSION"
 }
 
+function disableUpgrade () {
+  #
+  # 分析如何禁止微信自动更新
+  #   https://www.bilibili.com/video/av75595562/
+  #
+  wine REG ADD 'HKEY_CURRENT_USER\Software\Tencent\WeChat' /v NeedUpdateType /t REG_DWORD /d 0 /f > /dev/null 2>&1
+
+  CONFIG_EX_INI_FILE='/home/user/.wine/drive_c/users/user/Application Data/Tencent/WeChat/All Users/config/configEx.ini'
+  if [ -e "$CONFIG_EX_INI_FILE" ]; then
+    sed -i s/^NeedUpdateType=.*$/NeedUpdateType=0/i "$CONFIG_EX_INI_FILE"
+  fi
+}
+
 #
 # WeChat
 #
 function startWechat () {
 
   hello
+  disableUpgrade
 
   if [ -n "$DOCHAT_DEBUG" ]; then
     wine reg query 'HKEY_CURRENT_USER\Software\Tencent\WeChat' || echo 'Register for Wechat not found ?'
