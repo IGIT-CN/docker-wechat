@@ -10,6 +10,16 @@
 #
 set -eo pipefail
 
+#
+# The defeault docker image version which confirmed that most stable.
+#
+DEFAULT_WECHAT_VERSION=2.7.1.85
+
+#
+# Get the image version tag from the env
+#
+DOCHAT_IMAGE_VERSION="zixia/wechat:${DOCHAT_WECHAT_VERSION:-${DEFAULT_WECHAT_VERSION}}"
+
 function hello () {
   cat <<'EOF'
 
@@ -43,22 +53,22 @@ function hello () {
 EOF
 }
 
-function update () {
-  if [ -n "$DOCHAT_SKIP_UPDATE" ]; then
+function pullUpdate () {
+  if [ -n "$DOCHAT_SKIP_PULL" ]; then
     return
   fi
 
-  echo '🚀 Pulling the latest docker image...'
+  echo '🚀 Pulling the docker image...'
   echo
-  docker pull zixia/wechat
+  docker pull "$DOCHAT_IMAGE_VERSION"
   echo
-  echo '🚀 Pulling the latest docker image done.'
+  echo '🚀 Pulling the docker image done.'
 }
 
 function main () {
 
   hello
-  update
+  pullUpdate
 
   DEVICE_ARG=()
   for DEVICE in /dev/video* /dev/snd; do
@@ -82,8 +92,9 @@ function main () {
     -v "$HOME/DoChat/Applcation Data":'/home/user/.wine/drive_c/users/user/Application Data/' \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     \
-    -e DISPLAY="$DISPLAY" \
-    -e DOCHAT_DEBUG="$DOCHAT_DEBUG" \
+    -e DISPLAY \
+    -e DOCHAT_DEBUG \
+    -e DOCHAT_DPI \
     \
     -e XMODIFIERS=@im=fcitx \
     -e GTK_IM_MODULE=fcitx \
@@ -96,7 +107,7 @@ function main () {
     --ipc=host \
     --privileged \
     \
-    zixia/wechat
+    "$DOCHAT_IMAGE_VERSION"
 
     echo
     echo "📦 DoChat Exited with code [$?]"

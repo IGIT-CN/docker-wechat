@@ -14,12 +14,34 @@ function disableUpgrade () {
   # 分析如何禁止微信自动更新
   #   https://www.bilibili.com/video/av75595562/
   #
-  wine REG ADD 'HKEY_CURRENT_USER\Software\Tencent\WeChat' /v NeedUpdateType /t REG_DWORD /d 0 /f > /dev/null 2>&1
+  if ! wine REG ADD 'HKEY_CURRENT_USER\Software\Tencent\WeChat' /v NeedUpdateType /t REG_DWORD /d 0 /f > /dev/null 2>&1; then
+    >&2 echo 'FAIL: "reg add HKEY_CURRENT_USER\Software\Tencent\WeChat /v NeedUpdateType /d 0"'
+  fi
 
   CONFIG_EX_INI_FILE='/home/user/.wine/drive_c/users/user/Application Data/Tencent/WeChat/All Users/config/configEx.ini'
   if [ -e "$CONFIG_EX_INI_FILE" ]; then
     sed -i s/^NeedUpdateType=.*$/NeedUpdateType=0/i "$CONFIG_EX_INI_FILE"
   fi
+}
+
+function setupFontDpi () {
+  #
+  # Wine Screen Resolution (DPI Setting)
+  #   https://wiki.winehq.org/Winecfg#Screen_Resolution_.28DPI_Setting.29
+  #
+  DELETE_KEYS=('HKEY_CURRENT_USER\Control Panel\Desktop' 'HKEY_CURRENT_USER\Software\Wine\Fonts')
+
+  for key in "${DELETE_KEYS[@]}"; do
+    wine reg DELETE "$key" /v LogPixels /f > /dev/null 2>&1 || true
+  done
+
+  wine reg ADD \
+    'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Hardware Profiles\Current\Software\Fonts' \
+    /v LogPixels \
+    /t REG_DWORD \
+    /d "${DOCHAT_DPI:-120}" \
+    /f \
+    > /dev/null 2>&1
 }
 
 #
@@ -29,10 +51,16 @@ function startWechat () {
 
   hello
   disableUpgrade
+  setupFontDpi
 
   if [ -n "$DOCHAT_DEBUG" ]; then
+    unset WINEDEBUG
     wine reg query 'HKEY_CURRENT_USER\Software\Tencent\WeChat' || echo 'Register for Wechat not found ?'
+    echo "[DoChat] DISPLAY=$DISPLAY"
   fi
+
+  VERSION=$(head -1 /home/VERSION.WeChat)
+  echo "[DoChat] WeChat $VERSION"
 
   while true; do
     echo '[DoChat] Starting...'
